@@ -3,23 +3,24 @@ params;
 map1 = read_data('data.txt');
 map2 = read_data('data1.txt');
 Ts = 5e-5;
-t_fin = 0.04;
+t_fin = 0.01;
+h = Ts/100;
 [v1, P1] = find_max_power(map1);
 [v2, P2] = find_max_power(map2);
 x0 = [0,  0,  0,  0,  0,  0]';
 %@(x) [1-v1/(parameters.V_dc/2), 1-v2/(parameters.V_dc/2)]
-logger =  Logger(1, 4, 2);
+logger =  Logger(1, 4, 2, t_fin/h);
 c = 0.001;
 controller1 = MPPT_controller(map1, v1-7, 0, c);
 controller2 = MPPT_controller(map2, v2-7, 0, c);
 vout = parameters.V_dc/2;
-[t, x] = simulate(parameters, map1, map2, @(x) [controller1.step(x(1), vout), controller2.step(x(2), vout)], Ts, t_fin, x0, logger);
+[t, x] = simulate(parameters, map1, map2, @(x) [controller1.step(x(1), vout), controller2.step(x(2), vout)], Ts, t_fin, h, x0, logger);
 
 
-function [t, x] = simulate(parameters, map1, map2, controller, Ts, t_fin, x0, logger)
-    options = odeset('Stats','on','OutputFcn',@myodeplot, 'MaxStep',Ts/100);
+function [t, x] = simulate(parameters, map1, map2, controller, Ts, t_fin, h, x0, logger)
+    %options = odeset('Stats','on','OutputFcn',@myodeplot, 'MaxStep',Ts/100);
     %[t, x] = ode45(@(t, x) model(t, x, parameters, map1, map2, controller, Ts, logger), [0, t_fin], x0, options);
-    [t, x] = eulero_forward(@(t, x) model(t, x, parameters, map1, map2, controller, Ts, logger), t_fin, Ts/100, x0);
+    [t, x] = eulero_forward(@(t, x) model(t, x, parameters, map1, map2, controller, Ts, logger), t_fin, h, x0);
 end
 
 function [t, x] = eulero_forward(model, t_fin, t_step, x0)

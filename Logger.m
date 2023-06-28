@@ -22,10 +22,7 @@ classdef Logger < handle
     end
     
     methods
-        function obj = Logger(nu, nw, nq)
-            %UNTITLED8 Construct an instance of this class
-            %   Detailed explanation goes here
-            N = 100000;
+        function obj = Logger(nu, nw, nq, N)
             obj.z = zeros([nw, N]);obj.idxz = 1;
             obj.w = zeros([nw, N]);obj.idxw = 1;
             obj.u = zeros([nu, N]);obj.idxu = 1;
