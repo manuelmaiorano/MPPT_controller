@@ -3,23 +3,21 @@ classdef MPPT_controller < handle
     properties
         v_prev
         v_rif
-        map
         dPdv_prev
         c
     end
     
     methods
-        function obj = MPPT_controller(map, v_rif, v0, c)
+        function obj = MPPT_controller(v_rif, v0, c)
             obj.c = c;
             obj.v_prev = v0;
             obj.v_rif = v_rif;
-            obj.map = map;
             obj.dPdv_prev = 0;
         end
         
-        function d = step(obj, v_curr, v_out)
+        function d = step(obj, v_curr, v_out, map)
            
-            dPdv = obj.deriv(v_curr);
+            dPdv = obj.deriv(v_curr, map);
             if (dPdv * obj.dPdv_prev) > 0
                 if  dPdv > 0
                     obj.v_rif = obj.v_rif + obj.c;
@@ -34,9 +32,9 @@ classdef MPPT_controller < handle
         end
         
         
-        function dPdv = deriv(obj, v_curr)
-            P_curr = v_curr * interpolate(obj.map, v_curr);
-            P_prev = obj.v_prev * interpolate(obj.map, obj.v_prev);
+        function dPdv = deriv(obj, v_curr, map)
+            P_curr = v_curr * interpolate(map, v_curr);
+            P_prev = obj.v_prev * interpolate(map, obj.v_prev);
             dPdv = (P_curr - P_prev)/(v_curr - obj.v_prev);
         end
         

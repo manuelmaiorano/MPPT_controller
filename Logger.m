@@ -11,6 +11,7 @@ classdef Logger < handle
         port
         t
         x
+        mod
         idxz
         idxw
         idxu
@@ -19,6 +20,7 @@ classdef Logger < handle
         idxi
         idxt
         idxx
+        idxm
     end
     
     methods
@@ -31,6 +33,7 @@ classdef Logger < handle
             obj.i = zeros([2, N]);obj.idxi = 1;
             obj.t = zeros([1, N]);obj.idxt = 1;
             obj.x = zeros([6, N]);obj.idxx = 1;
+            obj.mod = zeros([2, N]);obj.idxm = 1;
         end
         
         function add_t(obj,t)
@@ -61,6 +64,10 @@ classdef Logger < handle
             obj.x(:, obj.idxx) = x;
             obj.idxx = obj.idxx + 1;
         end
+        function add_mod(obj,mod)
+            obj.mod(:, obj.idxm) = mod;
+            obj.idxm = obj.idxm + 1;
+        end
         
         function plot(obj)
             ts = obj.t(1, 1:obj.idxt-1);
@@ -70,12 +77,16 @@ classdef Logger < handle
             plot(ts, obj.sig(2, 1:obj.idxsig-1));
             figure;
             plot(ts, obj.port(1, 1:obj.idxport-1));
+            hold on;
+            plot(ts, obj.mod(:, 1:obj.idxm-1));
             figure;
             plot(ts, obj.z(:, 1:obj.idxz-1));
             figure;
             plot(ts, obj.i(:, 1:obj.idxi-1));
             figure;
             plot(ts, obj.x(:, 1:obj.idxx-1));
+            figure;
+            plot(ts, obj.i(1:2, 1:obj.idxi-1) .* obj.x(1:2, 1:obj.idxx-1));
         end
     end
 end

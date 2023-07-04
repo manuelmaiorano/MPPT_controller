@@ -3,10 +3,14 @@ parameters.R_L2 = 0.048;
 parameters.R_Co1 = 0.02;
 parameters.R_Co2 = 0.02;
 parameters.V_dc = 760;
+
 parameters.Ci1 = 220e-6;
 parameters.Ci2 = 220e-6;
+
 parameters.Co1 = 330e-6;
 parameters.Co2 = 330e-6;
+
+
 parameters.L1 = 180e-6;
 parameters.L2 = 180e-6;
 
@@ -26,7 +30,7 @@ L2 = parameters.L2;
 imax_sw1 = 10^10;
 imax_sw2 = 10^10;
 
-i_pv = 1;
+
 parameters.Fcp = [
                     [R_Co1/(R_Co1 + R_Co2)],
                     [R_Co2/(R_Co1 + R_Co2)],

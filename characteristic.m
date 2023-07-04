@@ -1,7 +1,7 @@
 %% Solar electrical model based on Shockley diode equation
 clear all
 clc
-Va=0:.01:25;
+Va=0:.01:50;
 Suns=.2:.2:1;
 TaC=30;
 Ipv=zeros(size(Va));
@@ -14,11 +14,11 @@ A=1.2;
 Vg=1.12;
 Ns=36;
 T1=273+25;
-Voc_T1=21.06/Ns;
-Isc_T1=3.80;
+Voc_T1=21.06/Ns;Voc_T1=37.3/Ns;
+Isc_T1=3.80;Isc_T1=8.16;
 T2=273+75;
-Voc_T2=17.05/Ns;
-Isc_T2=3.92;
+Voc_T2=17.05/Ns;Voc_T2=37.3/Ns;
+Isc_T2=3.92;Isc_T2=8.16;
 TarK=273+TaC;
 Tref=273+25;
 %{

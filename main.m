@@ -1,26 +1,41 @@
-
+clear all, close all, clc
 params;
-map1 = read_data('data.txt');
-map2 = read_data('data1.txt');
+map1 = read_data('data_mod1.txt');
+map1 = map1(find(map1(:, 2) > 0), :);
+map2 = read_data('data_mod2.txt');
+map2 = map2(find(map2(:, 2) > 0), :);
+map3 = read_data('data_mod3.txt');
+map3 = map3(find(map3(:, 2) > 0), :);
+
 Ts = 5e-5;
-t_fin = 0.01;
+t_fin = 0.04;
 h = Ts/100;
 [v1, P1] = find_max_power(map1);
 [v2, P2] = find_max_power(map2);
 x0 = [0,  0,  0,  0,  0,  0]';
 %@(x) [1-v1/(parameters.V_dc/2), 1-v2/(parameters.V_dc/2)]
+%@(x) [controller1.step(x(1), vout), controller2.step(x(2), vout)]
 logger =  Logger(1, 4, 2, t_fin/h);
 c = 0.001;
-controller1 = MPPT_controller(map1, v1-7, 0, c);
-controller2 = MPPT_controller(map2, v2-7, 0, c);
+controller1 = MPPT_controller(v1/2, 0, c);
+controller2 = MPPT_controller(v2/2, 0, c);
 vout = parameters.V_dc/2;
-[t, x] = simulate(parameters, map1, map2, @(x) [controller1.step(x(1), vout), controller2.step(x(2), vout)], Ts, t_fin, h, x0, logger);
+[t, x] = simulate(parameters, map1, map2, map3, ...
+    @(x, t) controller_wrapper(x, t, t_fin, vout, map1, map2, map3, controller1, controller2),...
+     Ts, t_fin, h, x0, logger);
 
-
-function [t, x] = simulate(parameters, map1, map2, controller, Ts, t_fin, h, x0, logger)
+function d = controller_wrapper(x, t, t_fin, vout, map1, map2, map3, controller1, controller2)
+    d(1) = controller1.step(x(1), vout, map1);
+    if t > t_fin/2
+        d(2) = controller2.step(x(2), vout, map3);
+    else
+        d(2) = controller2.step(x(2), vout, map2);
+    end
+end
+function [t, x] = simulate(parameters, map1, map2, map3, controller, Ts, t_fin, h, x0, logger)
     %options = odeset('Stats','on','OutputFcn',@myodeplot, 'MaxStep',Ts/100);
     %[t, x] = ode45(@(t, x) model(t, x, parameters, map1, map2, controller, Ts, logger), [0, t_fin], x0, options);
-    [t, x] = eulero_forward(@(t, x) model(t, x, parameters, map1, map2, controller, Ts, logger), t_fin, h, x0);
+    [t, x] = eulero_forward(@(t, x) model(t, x, parameters, map1, map2, map3, controller, Ts, t_fin, logger), t_fin, h, x0);
 end
 
 function [t, x] = eulero_forward(model, t_fin, t_step, x0)
@@ -32,7 +47,7 @@ function [t, x] = eulero_forward(model, t_fin, t_step, x0)
     end
 end
 
-function dx = model(t, x, parameters, map1, map2, controller, Ts, logger)
+function dx = model(t, x, parameters, map1, map2, map3, controller, Ts, t_fin, logger)
 
 logger.add_t(t);
 logger.add_x(x);
@@ -46,8 +61,7 @@ i_L2 = x(6);
 Vp = 1;
 
 M = parameters.Dcp;
-
-d = controller(x);
+d = controller(x, t);logger.add_mod(d);
 sig = [pwm(d(1),  t, Ts, Vp); pwm(d(2),  t, Ts, Vp)]; logger.add_sig(sig);logger.add_port(Vp*(sawtooth(2*pi*1/Ts*t) + 1)/2);
 q = parameters.Ccp * x + parameters.Fcp * parameters.V_dc + parameters.Hcp * sig;
 
@@ -73,11 +87,19 @@ L2 = parameters.L2;
 idot_L1=(-R_L1*i_L1 + v_Ci1 - z_sw1)/L1;
 idot_L2=(-R_L2*i_L2 + v_Ci2 - z_sw2)/L2;
 vdot_Ci1=(interpolate(map1, v_Ci1) - i_L1)/Ci1;
-vdot_Ci2=(interpolate(map2, v_Ci2) - i_L2)/Ci2;
+if t > t_fin/2
+    vdot_Ci2=(interpolate(map3, v_Ci2) - i_L2)/Ci2;
+else
+    vdot_Ci2=(interpolate(map2, v_Ci2) - i_L2)/Ci2;
+end
 vdot_Co1=(R_Co2*z_D1 - R_Co2*z_D2 + V_dc - v_Co1 - v_Co2)/(Co1*R_Co1 + Co1*R_Co2);
 vdot_Co2=(-R_Co1*z_D1 + R_Co1*z_D2 + V_dc - v_Co1 - v_Co2)/(Co2*R_Co1 + Co2*R_Co2);
 
-logger.add_i([interpolate(map1, v_Ci1); interpolate(map2, v_Ci2)]);
+if t > t_fin/2
+    logger.add_i([interpolate(map1, v_Ci1); interpolate(map3, v_Ci2)]);
+else
+    logger.add_i([interpolate(map1, v_Ci1); interpolate(map2, v_Ci2)]);
+end
 dx = [vdot_Ci1, vdot_Ci2, vdot_Co1, vdot_Co2, idot_L1, idot_L2]';
 end
 
