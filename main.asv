@@ -18,7 +18,7 @@ x0 = [0,  0,  0,  0,  0,  0]';
 logger =  Logger(1, 4, 2, t_fin/h);
 c = 0.001;
 controller1 = MPPT_controller(v1/2, map1(1, 2), 0, c);
-controller2 = MPPT_controller(v2/2, map2(1, 2), 0, c);
+controller2 = MPPT_controller(v2/2, 0, c);
 vout = parameters.V_dc/2;
 [t, x] = simulate(parameters, map1, map2, map3, ...
     @(x, t, i) controller_wrapper(x, t, i, t_fin, vout, map1, map2, map3, controller1, controller2),...
