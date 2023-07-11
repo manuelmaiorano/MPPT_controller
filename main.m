@@ -1,40 +1,42 @@
-clear all, close all, clc
+close all 
+clc
 params;
+%lettura mappe, eliminazione dei campioni di corrente negativi
 map1 = read_data('data_mod1.txt');
-map1 = map1(find(map1(:, 2) > 0), :);
+map1 = map1((map1(:, 2) > 0), :);
 map2 = read_data('data_mod2.txt');
-map2 = map2(find(map2(:, 2) > 0), :);
+map2 = map2((map2(:, 2) > 0), :);
 map3 = read_data('data_mod3.txt');
-map3 = map3(find(map3(:, 2) > 0), :);
+map3 = map3((map3(:, 2) > 0), :);
 
 Ts = 5e-5;
-t_fin = 0.04;
+t_fin = 0.08;
 h = Ts/100;
+
+%valori nominali tensione e potenza
 [v1, P1] = find_max_power(map1);
 [v2, P2] = find_max_power(map2);
+
 x0 = [0,  0,  0,  0,  0,  0]';
 %@(x) [1-v1/(parameters.V_dc/2), 1-v2/(parameters.V_dc/2)]
-%@(x) [controller1.step(x(1), vout), controller2.step(x(2), vout)]
 logger =  Logger(1, 4, 2, t_fin/h);
 c = 0.001;
+
+%creazione controllori
 controller1 = MPPT_controller(v1/2, map1(1, 2), 0, c);
 controller2 = MPPT_controller(v2/2, map2(1, 2), 0, c);
-vout = parameters.V_dc/2;
-[t, x] = simulate(parameters, map1, map2, map3, ...
-    @(x, t, i) controller_wrapper(x, t, i, t_fin, vout, map1, map2, map3, controller1, controller2),...
-     Ts, t_fin, h, x0, logger);
 
-function d = controller_wrapper(x, t, i, t_fin, vout, map1, map2, map3, controller1, controller2)
-    d(1) = controller1.step(x(1), vout, map1, i(1));
-    if t > t_fin/2
-        d(2) = controller2.step(x(2), vout, map3, i(2));
-    else
-        d(2) = controller2.step(x(2), vout, map2, i(2));
-    end
+[t, x] = simulate(parameters, map1, map2, map3, ...
+    @(x, t, i) controller_wrapper(x, t, i, controller1, controller2), Ts, t_fin, h, x0, logger);
+
+function d = controller_wrapper(x, t, i, controller1, controller2)
+    %invocazione dei controllori passando tensione e corrente sui moduli e
+    %tension in uscita
+    d(1) = controller1.step(x(1), x(3), i(1));
+    d(2) = controller2.step(x(2), x(4), i(2));
 end
+
 function [t, x] = simulate(parameters, map1, map2, map3, controller, Ts, t_fin, h, x0, logger)
-    %options = odeset('Stats','on','OutputFcn',@myodeplot, 'MaxStep',Ts/100);
-    %[t, x] = ode45(@(t, x) model(t, x, parameters, map1, map2, controller, Ts, logger), [0, t_fin], x0, options);
     [t, x] = eulero_forward(@(t, x) model(t, x, parameters, map1, map2, map3, controller, Ts, t_fin, logger), t_fin, h, x0);
 end
 
@@ -43,6 +45,7 @@ function [t, x] = eulero_forward(model, t_fin, t_step, x0)
     x = zeros([numel(x0), size(t, 2)]);
     x(:, 1) = x0;
     for i = 2:size(x, 2)
+        %metodo eulero forward
         x(:, i) = x(:, i-1) + t_step * model(i*t_step, x(:, i-1));
     end
 end
@@ -58,8 +61,9 @@ v_Co2 = x(4);
 i_L1 = x(5);
 i_L2 = x(6);
 
+%calcolo correnti tramite interpolazione delle mappe
 ipv1 = interpolate(map1, v_Ci1);
-if t > t_fin/2
+if t > 2*t_fin
     ipv2 = interpolate(map3, v_Ci2);
 else
     ipv2 = interpolate(map2, v_Ci2);
@@ -67,11 +71,14 @@ end
 
 Vp = 1;
 
-M = parameters.Dcp;
+%calcolo segnali controllo degli switch
 d = controller(x, t, [ipv1; ipv2]);logger.add_mod(d);
-sig = [pwm(d(1),  t, Ts, Vp); pwm(d(2),  t, Ts, Vp)]; logger.add_sig(sig);logger.add_port(Vp*(sawtooth(2*pi*1/Ts*t) + 1)/2);
-q = parameters.Ccp * x + parameters.Fcp * parameters.V_dc + parameters.Hcp * sig;
+sig = [pwm(d(1),  t, Ts, Vp); pwm(d(2),  t, Ts, Vp)]; 
+logger.add_sig(sig);logger.add_port(Vp*(sawtooth(2*pi*1/Ts*t) + 1)/2);
 
+%calcolo z
+M = parameters.Dcp;
+q = parameters.Ccp * x + parameters.Fcp * parameters.V_dc + parameters.Hcp * sig;
 [z, err] = LEMKE(M, q);logger.add_z(z);
 
 z_D1 = z(1);
@@ -91,6 +98,7 @@ Co2 = parameters.Co2;
 L1 = parameters.L1;
 L2 = parameters.L2;
 
+%equazioni del modello
 idot_L1=(-R_L1*i_L1 + v_Ci1 - z_sw1)/L1;
 idot_L2=(-R_L2*i_L2 + v_Ci2 - z_sw2)/L2;
 vdot_Ci1=(ipv1 - i_L1)/Ci1;
@@ -103,6 +111,7 @@ dx = [vdot_Ci1, vdot_Ci2, vdot_Co1, vdot_Co2, idot_L1, idot_L2]';
 end
 
 function q = pwm(value, t, Ts, Vp)
+    %portante
     portante = Vp*(sawtooth(2*pi*1/Ts*t) + 1)/2;
     
     if(value < portante)

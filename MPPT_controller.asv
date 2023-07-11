@@ -30,10 +30,8 @@ classdef MPPT_controller < handle
                 end
             end
             
-            %calcolo di d a partire dal riferimeto e dalla tensione in
-            %uscita
-            d = 1- obj.v_rif/v_out;
             
+            d = 1- obj.v_rif/v_out;
             obj.v_prev = v_curr;
             obj.dPdv_prev = dPdv;
             obj.i_prev = i_curr;

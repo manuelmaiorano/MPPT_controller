@@ -1,40 +1,41 @@
-clear all, close all, clc
+close all 
+clc
 params;
+%lettura mappe, eliminazione dei campioni di corrente negativi
 map1 = read_data('data_mod1.txt');
-map1 = map1(find(map1(:, 2) > 0), :);
+map1 = map1((map1(:, 2) > 0), :);
 map2 = read_data('data_mod2.txt');
-map2 = map2(find(map2(:, 2) > 0), :);
+map2 = map2((map2(:, 2) > 0), :);
 map3 = read_data('data_mod3.txt');
-map3 = map3(find(map3(:, 2) > 0), :);
+map3 = map3((map3(:, 2) > 0), :);
 
 Ts = 5e-5;
-t_fin = 0.04;
+t_fin = 0.08;
 h = Ts/100;
+
+%valori nominali tensione e potenza
 [v1, P1] = find_max_power(map1);
 [v2, P2] = find_max_power(map2);
+
 x0 = [0,  0,  0,  0,  0,  0]';
 %@(x) [1-v1/(parameters.V_dc/2), 1-v2/(parameters.V_dc/2)]
-%@(x) [controller1.step(x(1), vout), controller2.step(x(2), vout)]
 logger =  Logger(1, 4, 2, t_fin/h);
 c = 0.001;
-controller1 = MPPT_controller(v1/2, map1(1, 2), 0, c);
-controller2 = MPPT_controller(v2/2, 0, c);
-vout = parameters.V_dc/2;
-[t, x] = simulate(parameters, map1, map2, map3, ...
-    @(x, t, i) controller_wrapper(x, t, i, t_fin, vout, map1, map2, map3, controller1, controller2),...
-     Ts, t_fin, h, x0, logger);
 
-function d = controller_wrapper(x, t, i, t_fin, vout, map1, map2, map3, controller1, controller2)
-    d(1) = controller1.step(x(1), vout, map1, i(1));
-    if t > t_fin/2
-        d(2) = controller2.step(x(2), vout, map3, i(2));
-    else
-        d(2) = controller2.step(x(2), vout, map2, i(2));
-    end
+%creazione controllori
+controller1 = MPPT_controller(v1/2, map1(1, 2), 0, c);
+controller2 = MPPT_controller(v2/2, map2(1, 2), 0, c);
+
+[t, x] = simulate(parameters, map1, map2, map3, ...
+    @(x, t, i) controller_wrapper(x, t, i, controller1, controller2), Ts, t_fin, h, x0, logger);
+
+function d = controller_wrapper(x, t, i, controller1, controller2)
+    %invocazione dei controllori passando tensione e 
+    d(1) = controller1.step(x(1), x(3), i(1));
+    d(2) = controller2.step(x(2), x(4), i(2));
 end
+
 function [t, x] = simulate(parameters, map1, map2, map3, controller, Ts, t_fin, h, x0, logger)
-    %options = odeset('Stats','on','OutputFcn',@myodeplot, 'MaxStep',Ts/100);
-    %[t, x] = ode45(@(t, x) model(t, x, parameters, map1, map2, controller, Ts, logger), [0, t_fin], x0, options);
     [t, x] = eulero_forward(@(t, x) model(t, x, parameters, map1, map2, map3, controller, Ts, t_fin, logger), t_fin, h, x0);
 end
 
@@ -59,7 +60,7 @@ i_L1 = x(5);
 i_L2 = x(6);
 
 ipv1 = interpolate(map1, v_Ci1);
-if t > t_fin/2
+if t > 2*t_fin
     ipv2 = interpolate(map3, v_Ci2);
 else
     ipv2 = interpolate(map2, v_Ci2);

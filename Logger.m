@@ -71,22 +71,42 @@ classdef Logger < handle
         
         function plot(obj)
             ts = obj.t(1, 1:obj.idxt-1);
-            figure;
-            plot(ts, obj.sig(1, 1:obj.idxsig-1));
-            figure;
-            plot(ts, obj.sig(2, 1:obj.idxsig-1));
+%             figure;
+%             plot(ts, obj.sig(1, 1:obj.idxsig-1));
+%             figure;
+%             plot(ts, obj.sig(2, 1:obj.idxsig-1));
             figure;
             plot(ts, obj.port(1, 1:obj.idxport-1));
             hold on;
-            plot(ts, obj.mod(:, 1:obj.idxm-1));
-            figure;
-            plot(ts, obj.z(:, 1:obj.idxz-1));
+            plot(ts, obj.mod(:, 1:obj.idxm-1), 'LineWidth',2);
+            legend('portante', 'modulante primo modulo', 'modulante secondo modulo');
+            xlabel('tempo[s]');
+            set (gca,'XMinorTick','on','XMinorGrid','on','YMinorTick','on',...
+            'YMinorGrid','on','GridLineStyle',':');
+            grid on; box on; set (gca,'FontSize',11);
+%             figure;
+%             plot(ts, obj.z(:, 1:obj.idxz-1));
             figure;
             plot(ts, obj.i(:, 1:obj.idxi-1));
+            legend('corrente primo modulo', 'corrente secondo modulo');
+            xlabel('tempo[s]');ylabel('corrente[A]');
+            set (gca,'XMinorTick','on','XMinorGrid','on','YMinorTick','on',...
+            'YMinorGrid','on','GridLineStyle',':');
+            grid on; box on; set (gca,'FontSize',11);
             figure;
-            plot(ts, obj.x(:, 1:obj.idxx-1));
+            plot(ts, obj.x(1:4, 1:obj.idxx-1));
+            legend('tensione primo modulo', 'tensione secondo modulo');
+            xlabel('tempo[s]');ylabel('tensione[V]');
+            set (gca,'XMinorTick','on','XMinorGrid','on','YMinorTick','on',...
+            'YMinorGrid','on','GridLineStyle',':');
+            grid on; box on; set (gca,'FontSize',11);
             figure;
             plot(ts, obj.i(1:2, 1:obj.idxi-1) .* obj.x(1:2, 1:obj.idxx-1));
+            legend('potenza primo modulo', 'potenza secondo modulo');
+            xlabel('tempo[s]');ylabel('potenza[W]');
+            set (gca,'XMinorTick','on','XMinorGrid','on','YMinorTick','on',...
+            'YMinorGrid','on','GridLineStyle',':');
+            grid on; box on; set (gca,'FontSize',11);
         end
     end
 end
