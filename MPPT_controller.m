@@ -6,18 +6,22 @@ classdef MPPT_controller < handle
         v_rif
         dPdv_prev
         c
+        csi
+        df
     end
     
     methods
-        function obj = MPPT_controller(v_rif, i_prev, v0, c)
+        function obj = MPPT_controller(v_rif, i_prev, v0, c, df)
             obj.c = c;
             obj.v_prev = v0;
             obj.i_prev = i_prev;
             obj.v_rif = v_rif;
             obj.dPdv_prev = 0;
+            obj.csi = 0;
+            obj.df = df;
         end
         
-        function d = step(obj, v_curr, v_out, i_curr)
+        function [vrif, d] = step(obj, v_curr, v_out, i_curr)
            
             dPdv = obj.deriv(v_curr, i_curr);
             
@@ -33,6 +37,12 @@ classdef MPPT_controller < handle
             %calcolo di d a partire dal riferimeto e dalla tensione in
             %uscita
             d = 1- obj.v_rif/v_out;
+            
+%             e = obj.v_rif - v_curr;
+%             kp = 0.0005; ki=0.0001; h = 5e-7;
+%             obj.csi = obj.csi + h * e;
+%             d = obj.df + kp * e + ki * obj.csi; 
+            vrif = obj.v_rif;
             
             obj.v_prev = v_curr;
             obj.dPdv_prev = dPdv;

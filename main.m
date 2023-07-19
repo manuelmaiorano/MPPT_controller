@@ -10,30 +10,34 @@ map3 = read_data('data_mod3.txt');
 map3 = map3((map3(:, 2) > 0), :);
 
 Ts = 5e-5;
-t_fin = 0.08;
+t_fin = 0.04;
 h = Ts/100;
+
+vout = parameters.V_dc/2;
 
 %valori nominali tensione e potenza
 [v1, P1] = find_max_power(map1);
 [v2, P2] = find_max_power(map2);
 
 x0 = [0,  0,  0,  0,  0,  0]';
-%@(x) [1-v1/(parameters.V_dc/2), 1-v2/(parameters.V_dc/2)]
+%@(x, t, i) [1-v1/(parameters.V_dc/2), 1-v2/(parameters.V_dc/2)]
+%@(x, t, i) controller_wrapper(x, t, i, controller1, controller2)
 logger =  Logger(1, 4, 2, t_fin/h);
 c = 0.001;
 
 %creazione controllori
-controller1 = MPPT_controller(v1/2, map1(1, 2), 0, c);
-controller2 = MPPT_controller(v2/2, map2(1, 2), 0, c);
+controller1 = MPPT_controller(v1, map1(1, 2), 0, c, 1-v1/(parameters.V_dc/2));
+controller2 = MPPT_controller(v2, map2(1, 2), 0, c, 1-v2/(parameters.V_dc/2));
 
 [t, x] = simulate(parameters, map1, map2, map3, ...
-    @(x, t, i) controller_wrapper(x, t, i, controller1, controller2), Ts, t_fin, h, x0, logger);
+    @(x, t, i) controller_wrapper(x, t, i, controller1, controller2, logger), Ts, t_fin, h, x0, logger);
 
-function d = controller_wrapper(x, t, i, controller1, controller2)
+function d = controller_wrapper(x, t, i, controller1, controller2, logger)
     %invocazione dei controllori passando tensione e corrente sui moduli e
     %tension in uscita
-    d(1) = controller1.step(x(1), x(3), i(1));
-    d(2) = controller2.step(x(2), x(4), i(2));
+    [v_rif1, d(1)] = controller1.step(x(1), x(3), i(1));
+    [v_rif2, d(2)] = controller2.step(x(2), x(4), i(2));
+    logger.add_vrif([v_rif1; v_rif2]);
 end
 
 function [t, x] = simulate(parameters, map1, map2, map3, controller, Ts, t_fin, h, x0, logger)
@@ -63,7 +67,7 @@ i_L2 = x(6);
 
 %calcolo correnti tramite interpolazione delle mappe
 ipv1 = interpolate(map1, v_Ci1);
-if t > 2*t_fin
+if t > t_fin/2
     ipv2 = interpolate(map3, v_Ci2);
 else
     ipv2 = interpolate(map2, v_Ci2);

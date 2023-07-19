@@ -21,6 +21,8 @@ classdef Logger < handle
         idxt
         idxx
         idxm
+        idxrif
+        vrifs
     end
     
     methods
@@ -34,11 +36,16 @@ classdef Logger < handle
             obj.t = zeros([1, N]);obj.idxt = 1;
             obj.x = zeros([6, N]);obj.idxx = 1;
             obj.mod = zeros([2, N]);obj.idxm = 1;
+            obj.vrifs = zeros([2, N]);obj.idxrif = 1;
         end
         
         function add_t(obj,t)
             obj.t(:, obj.idxt) = t;
             obj.idxt = obj.idxt + 1;
+        end
+        function add_vrif(obj, vrif)
+            obj.vrifs(:, obj.idxrif) = vrif;
+            obj.idxrif = obj.idxrif + 1;
         end
         function add_w(obj,w)
             obj.w(:, obj.idxw) = w;
@@ -94,12 +101,28 @@ classdef Logger < handle
             'YMinorGrid','on','GridLineStyle',':');
             grid on; box on; set (gca,'FontSize',11);
             figure;
-            plot(ts, obj.x(1:4, 1:obj.idxx-1));
+            plot(ts, obj.x(1:2, 1:obj.idxx-1));
             legend('tensione primo modulo', 'tensione secondo modulo');
             xlabel('tempo[s]');ylabel('tensione[V]');
             set (gca,'XMinorTick','on','XMinorGrid','on','YMinorTick','on',...
             'YMinorGrid','on','GridLineStyle',':');
             grid on; box on; set (gca,'FontSize',11);
+            figure;
+            plot(ts, obj.x(3:4, 1:obj.idxx-1));
+            legend('tensione uscita primo modulo', 'tensione uscita secondo modulo');
+            xlabel('tempo[s]');ylabel('tensione[V]');
+            set (gca,'XMinorTick','on','XMinorGrid','on','YMinorTick','on',...
+            'YMinorGrid','on','GridLineStyle',':');
+            grid on; box on; set (gca,'FontSize',11);
+            
+            figure;
+            plot(ts, obj.vrifs(:, 1:obj.idxrif-1));
+            legend('vrif1', 'vrif2');
+            xlabel('tempo[s]');ylabel('potenza[W]');
+            set (gca,'XMinorTick','on','XMinorGrid','on','YMinorTick','on',...
+            'YMinorGrid','on','GridLineStyle',':');
+            grid on; box on; set (gca,'FontSize',11);
+            
             figure;
             plot(ts, obj.i(1:2, 1:obj.idxi-1) .* obj.x(1:2, 1:obj.idxx-1));
             legend('potenza primo modulo', 'potenza secondo modulo');
