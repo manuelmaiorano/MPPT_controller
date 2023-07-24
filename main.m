@@ -10,7 +10,7 @@ map3 = read_data('data_mod3.txt');
 map3 = map3((map3(:, 2) > 0), :);
 
 Ts = 5e-5;
-t_fin = 0.04;
+t_fin = 30*0.04;
 h = Ts/100;
 
 vout = parameters.V_dc/2;
@@ -22,15 +22,17 @@ vout = parameters.V_dc/2;
 x0 = [0,  0,  0,  0,  0,  0]';
 %@(x, t, i) [1-v1/(parameters.V_dc/2), 1-v2/(parameters.V_dc/2)]
 %@(x, t, i) controller_wrapper(x, t, i, controller1, controller2)
-logger =  Logger(1, 4, 2, t_fin/h);
+logger =  Logger(1, 4, 2, floor(t_fin/h));
 c = 0.001;
 
 %creazione controllori
-controller1 = MPPT_controller(v1, map1(1, 2), 0, c, 1-v1/(parameters.V_dc/2));
-controller2 = MPPT_controller(v2, map2(1, 2), 0, c, 1-v2/(parameters.V_dc/2));
+controller1 = MPPT_controller(v1/2, map1(1, 2), 0, c);
+controller2 = MPPT_controller(v2/2, map2(1, 2), 0, c);
 
+tic
 [t, x] = simulate(parameters, map1, map2, map3, ...
     @(x, t, i) controller_wrapper(x, t, i, controller1, controller2, logger), Ts, t_fin, h, x0, logger);
+toc
 
 function d = controller_wrapper(x, t, i, controller1, controller2, logger)
     %invocazione dei controllori passando tensione e corrente sui moduli e
@@ -41,7 +43,7 @@ function d = controller_wrapper(x, t, i, controller1, controller2, logger)
 end
 
 function [t, x] = simulate(parameters, map1, map2, map3, controller, Ts, t_fin, h, x0, logger)
-    [t, x] = eulero_forward(@(t, x) model(t, x, parameters, map1, map2, map3, controller, Ts, t_fin, logger), t_fin, h, x0);
+    [t, x] = eulero_forward(@(t, x) model_fast(t, x, parameters, map1, map2, map3, controller, Ts, t_fin, logger), t_fin, h, x0);
 end
 
 function [t, x] = eulero_forward(model, t_fin, t_step, x0)
@@ -67,7 +69,7 @@ i_L2 = x(6);
 
 %calcolo correnti tramite interpolazione delle mappe
 ipv1 = interpolate(map1, v_Ci1);
-if t > t_fin/2
+if t > t_fin/3
     ipv2 = interpolate(map3, v_Ci2);
 else
     ipv2 = interpolate(map2, v_Ci2);
@@ -112,15 +114,4 @@ vdot_Co2=(-R_Co1*z_D1 + R_Co1*z_D2 + V_dc - v_Co1 - v_Co2)/(Co2*R_Co1 + Co2*R_Co
 
 logger.add_i([ipv1; ipv2]);
 dx = [vdot_Ci1, vdot_Ci2, vdot_Co1, vdot_Co2, idot_L1, idot_L2]';
-end
-
-function q = pwm(value, t, Ts, Vp)
-    %portante
-    portante = Vp*(sawtooth(2*pi*1/Ts*t) + 1)/2;
-    
-    if(value < portante)
-        q = 0;
-    else   
-        q = 1;
-    end
 end
